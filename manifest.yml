@@ -1,0 +1,15 @@
+modules:
+  jira:issuePanel:
+    - key: priority-checklists-hello-world-panel
+      function: main
+      title: Priority Checklists
+      icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+  function:
+    - key: main
+      handler: index.run
+app:
+  id: ari:cloud:ecosystem::app/5ba5fed4-792b-43fa-9bd1-2b0218c05615
+  name: Priority Checklists
+permissions:
+  scopes:
+    - read:jira-work
