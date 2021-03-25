@@ -15,6 +15,7 @@
   "dependencies": {
     "@forge/api": "^1.0.1",
     "@forge/ui": "^0.9.0",
+    "@forge/ui-jira": "^0.4.0",
     "uuid": "^8.3.2"
   }
 }

@@ -15,6 +15,8 @@ import ForgeUI, {
   useState,
   IssueGlance,
 } from "@forge/ui";
+import { useIssueProperty } from "@forge/ui-jira";
+
 import { v4 as uuidv4 } from "uuid";
 
 const fetchCommentsForIssue = async (issueId) => {
@@ -26,19 +28,56 @@ const fetchCommentsForIssue = async (issueId) => {
   return data.comments;
 };
 
+// maps checklist score to a priority checklist score lower bound
+const priorityThresholds = {
+  critical: 7,
+  major: 5,
+  minor: 2,
+};
+
 const Panel = () => {
+  const [checklistScore, _] = useIssueProperty(
+    "priority-checklist-score",
+    null
+  );
+
   return (
     <Fragment>
-      <Summary />
+      <Summary checklistScore={checklistScore} />
     </Fragment>
   );
 };
 
-const Summary = () => {
+const Summary = (props) => {
+  const { checklistScore } = props;
+
+  // Set suggested priority
+  var suggestedPriority = "trivial";
+  for (const priority in priorityThresholds) {
+    if (checklistScore >= priorityThresholds[priority]) {
+      suggestedPriority = priority;
+      break;
+    }
+  }
+
+  // Handle case where user hasn't filled out checklist yet
+  if (checklistScore === null) {
+    console.log("rendering!");
+    return (
+      <Fragment>
+        <Text>
+          Priority Checklist Score:
+          <Badge appearance="removed" text="Unset" />
+        </Text>
+      </Fragment>
+    );
+  }
+
   return (
     <Text>
-      Score: <Badge appearance="primary" text="10" />
-      {"  |  "}Estimated Priority: <Badge appearance="primary" text="Low" />
+      Score: <Badge appearance="primary" text={checklistScore} />
+      {"  |  "}Suggested Priority:{" "}
+      <Badge appearance="primary" text={suggestedPriority} />
     </Text>
   );
 };
@@ -100,16 +139,39 @@ const EditScore = () => {
   ];
 
   // Get checked items from ticket state
-  const [checkedItems, setCheckedItems] = useState([
-    "091b5236-0af5-4363-9ec9-eba2606a423a",
-  ]);
+  const [issueCheckedItems, setIssueCheckedItems] = useIssueProperty(
+    "priority-checklist-values",
+    []
+  );
+  const [checkedItems, setLocalCheckedItems] = useState(issueCheckedItems);
+  const setCheckedItems = (value) => {
+    setLocalCheckedItems(value);
+    setIssueCheckedItems(value);
+  };
 
-  console.log("checkedItems: ", checkedItems);
+  // get checklist score and sync with local state
+  const [issueChecklistScore, setIssueChecklistScore] = useIssueProperty(
+    "priority-checklist-score",
+    null
+  );
+  const [checklistScore, setLocalChecklistScore] = useState(
+    issueChecklistScore
+  );
+
+  const setChecklistScore = (value) => {
+    setLocalChecklistScore(value);
+    setIssueChecklistScore(value);
+  };
 
   const edit = () => {};
+
+  const [showConfirm, setShowConfirm] = useState(false);
   const reset = () => {
     setCheckedItems([]);
+    setChecklistScore(null);
+    setShowConfirm(false);
   };
+
   const setChecklist = (formData) => {
     console.log(formData);
     var temp = [];
@@ -117,13 +179,18 @@ const EditScore = () => {
       temp = [...temp, ...formData[group]];
     }
     setCheckedItems(temp);
-    console.log("checkedItems: ", checkedItems);
+    setChecklistScore(temp.length);
   };
 
   // The array of additional buttons.
   // These buttons align to the right of the submit button.
   const actionButtons = [
-    <Button text="Reset" onClick={reset} />,
+    <Button
+      text="Reset"
+      onClick={() => {
+        setShowConfirm(true);
+      }}
+    />,
     <Button text="Edit" disabled={true} icon={"edit"} onClick={edit} />,
   ];
 
@@ -132,29 +199,35 @@ const EditScore = () => {
       <Text>
         <Strong>Summary</Strong>
       </Text>
-      <Summary />
+      <Summary checklistScore={checklistScore} />
 
       <Text>
         <Strong>Checklist</Strong>
       </Text>
 
-      <Form
-        onSubmit={setChecklist}
-        submitButtonText="Save"
-        actionButtons={actionButtons}
-      >
-        {checklistTemplate.map((group) => (
-          <CheckboxGroup name={group.uuid} label={group.name}>
-            {group.items.map((item) => (
-              <Checkbox
-                defaultChecked={checkedItems.includes(item.uuid)}
-                value={item.uuid}
-                label={item.description}
-              />
-            ))}
-          </CheckboxGroup>
-        ))}
-      </Form>
+      {!showConfirm ? (
+        <Form
+          onSubmit={setChecklist}
+          submitButtonText="Save"
+          actionButtons={actionButtons}
+        >
+          {checklistTemplate.map((group) => {
+            return (
+              <CheckboxGroup name={group.uuid} label={group.name}>
+                {group.items.map((item) => (
+                  <Checkbox
+                    defaultChecked={checkedItems.includes(item.uuid)}
+                    value={item.uuid}
+                    label={item.description}
+                  />
+                ))}
+              </CheckboxGroup>
+            );
+          })}
+        </Form>
+      ) : (
+        <Button onClick={reset} text="Confirm Reset" />
+      )}
     </Fragment>
   );
 };

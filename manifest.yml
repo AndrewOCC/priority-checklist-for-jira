@@ -24,4 +24,5 @@ app:
   name: Priority Checklists
 permissions:
   scopes:
-    - read:jira-work
+    - "read:jira-work"
+    - "write:jira-work"
