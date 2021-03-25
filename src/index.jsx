@@ -1,3 +1,4 @@
+import api from "@forge/api";
 import ForgeUI, {
   render,
   Fragment,
@@ -5,35 +6,49 @@ import ForgeUI, {
   IssuePanel,
   useProductContext,
   useState,
+  StatusLozenge,
+  IssueGlance,
 } from "@forge/ui";
-import api from "@forge/api";
 
 const fetchCommentsForIssue = async (issueId) => {
   const res = await api
-    .asApp()
+    .asUser()
     .requestJira(`/rest/api/3/issue/${issueId}/comment`);
 
   const data = await res.json();
   return data.comments;
 };
 
-const App = () => {
+const Panel = () => {
   const context = useProductContext();
-
   const [comments] = useState(
     async () => await fetchCommentsForIssue(context.platformContext.issueKey)
   );
-  console.log(`Number of comments on this issue: ${comments.length}`);
 
   return (
     <Fragment>
-      <Text>Hello world!</Text>
+      <Text>Number of comments on this issue: {comments.length}</Text>
     </Fragment>
   );
 };
 
-export const run = render(
+const EditScore = () => {
+  return (
+    <Fragment>
+      <Text>Score: </Text>
+      <StatusLozenge> 5 </StatusLozenge>
+    </Fragment>
+  );
+};
+
+export const panelView = render(
   <IssuePanel>
-    <App />
+    <Panel />
   </IssuePanel>
+);
+
+export const glance = render(
+  <IssueGlance>
+    <EditScore />
+  </IssueGlance>
 );
